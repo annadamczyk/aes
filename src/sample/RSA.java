@@ -7,8 +7,6 @@ import javax.crypto.NoSuchPaddingException;
 import java.security.*;
 import java.util.Base64;
 
-import static java.nio.charset.StandardCharsets.UTF_8;
-
 public class RSA {
     public static KeyPair generateKeyPair(int keySize) throws Exception { //key size 2048 to tests
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
@@ -18,20 +16,20 @@ public class RSA {
     }
 
     public static String encrypt(String sessionKey, PublicKey publicKey) throws Exception {
-        Cipher encryotCipher = Cipher.getInstance("RSA");
+        Cipher encryotCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         encryotCipher.init(Cipher.ENCRYPT_MODE, publicKey);
 
-        byte[] cipherText = encryotCipher.doFinal(sessionKey.getBytes(UTF_8));
+        byte[] cipherText = encryotCipher.doFinal(sessionKey.getBytes());
 
         return Base64.getEncoder().encodeToString(cipherText);
     }
 
     public  static String decrypt(String cipherText, PrivateKey privateKey) {
-        byte[] bytes = Base64.getDecoder().decode(cipherText);
+        byte[] bytes = Base64.getDecoder().decode(cipherText.trim());
         String decryptedSessionKey =null;
         Cipher decriptCipher = null;
         try {
-            decriptCipher = Cipher.getInstance("RSA");
+            decriptCipher = Cipher.getInstance("RSA/ECB/PKCS1Padding");
         } catch (NoSuchAlgorithmException e) {
             e.printStackTrace();
         } catch (NoSuchPaddingException e) {
@@ -44,7 +42,7 @@ public class RSA {
         }
 
         try {
-            decryptedSessionKey = new String(decriptCipher.doFinal(bytes), UTF_8);
+            decryptedSessionKey = new String(decriptCipher.doFinal(bytes));
         } catch (IllegalBlockSizeException e) {
             e.printStackTrace();
         } catch (BadPaddingException e) {

@@ -61,7 +61,7 @@ public class Main extends Application {
                         if (file != null) {
 
                                 try {
-                                    //fileEncrypterDecrypter.decryptFile(file, finalModeHash);
+                                    fileEncrypterDecrypter.decryptFile(file, finalModeHash);
                                 } catch (Exception e) {
                                     e.printStackTrace();
                                 }
@@ -81,7 +81,7 @@ public class Main extends Application {
 
                         if (file != null) {
                                     try {
-                                        //fileEncrypterDecrypter.encryptFile(file, finalModeHash,socket);
+                                        //fileEncrypterDecrypter.encryptFile(file, finalModeHash);
                                     } catch (Exception e1) {
                                         e1.printStackTrace();
                                     }
