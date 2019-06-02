@@ -14,16 +14,26 @@ import javafx.stage.Stage;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
-import java.io.File;
+import java.io.*;
+import java.net.Socket;
 import java.security.KeyPair;
 
-public class Main extends Application {
+public class Client extends Application {
+    private static Socket socket;
+    public static void main(String[] args) throws IOException {
+        //launch(args);
+        socket = new Socket("localhost",4999);
+
+
+        launch(args);
+    }
 
     @Override
-    public void start(Stage primaryStage) throws Exception{
+    public void start(Stage primaryStage) throws Exception {
+        primaryStage.setTitle("Client");
         final FileChooser fileChooser = new FileChooser();
-        final Button openButton = new Button("Choose a file to encoding...");
-        final Button openButton2 = new Button("Choose a file to decoding...");
+        final Button openButton = new Button("decoding...");
+        final Button openButton2 = new Button("potwierdź");
 
         SecretKey secretKey = KeyGenerator.getInstance("AES").generateKey();
         RSA RSAEncrypter = new RSA();
@@ -57,16 +67,21 @@ public class Main extends Application {
                 new EventHandler<ActionEvent>() {
                     @Override
                     public void handle(ActionEvent event) {
-                        File file = fileChooser.showOpenDialog(primaryStage);
-                        if (file != null) {
+                        //File file = fileChooser.showOpenDialog(primaryStage);
+                       // if (file != null) {
 
-                                try {
-                                    //fileEncrypterDecrypter.decryptFile(file, finalModeHash);
-                                } catch (Exception e) {
-                                    e.printStackTrace();
-                                }
+                            try {
+                                //InputStream input = socket.getInputStream();
+                                //FileOutputStream fileOutputStream = new FileOutputStream(f);
+                                //byte[] bytes = new byte[(int)f.length()];
+                                //input.read(bytes,0, bytes.length);
+                                //fileOutputStream.write(bytes,0,bytes.length);
+                                //fileEncrypterDecrypter.decryptFile(file, finalModeHash);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
 
-                        }
+                        //}
                     }
                 });
 
@@ -76,17 +91,26 @@ public class Main extends Application {
                     public void handle(final ActionEvent e) {
 
 
-                        File file = fileChooser.showOpenDialog(primaryStage);
+                        //File file = fileChooser.showOpenDialog(primaryStage);
 
 
-                        if (file != null) {
-                                    try {
-                                        //fileEncrypterDecrypter.encryptFile(file, finalModeHash,socket);
-                                    } catch (Exception e1) {
-                                        e1.printStackTrace();
-                                    }
+                        //if (file != null) {
+                            try {
 
-                        }}
+                                InputStream input = socket.getInputStream();
+                                byte[] buffer = new byte[input.available()];
+                                input.read(buffer);
+
+                                File targetFile = new File("C:\\Users\\Win10\\Desktop\\IT\\newFile");
+                                OutputStream outStream = new FileOutputStream(targetFile);
+                                outStream.write(buffer);
+                            } catch (IOException e2) {
+                                e2.printStackTrace();
+                            }
+
+                            }
+
+                        //}}
                 });
 
         final GridPane inputGridPane = new GridPane();
@@ -103,9 +127,5 @@ public class Main extends Application {
         primaryStage.setScene(new Scene(rootGroup,300,275));
 
         primaryStage.show();
-    }
-
-    public static void main(String[] args) {
-        launch(args);
     }
 }
