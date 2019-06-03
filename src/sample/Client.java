@@ -14,21 +14,19 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.net.Socket;
 import java.security.KeyPair;
+import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
-import java.security.PublicKey;
 import java.util.Base64;
 
 public class Client extends Application {
     private static Socket socket;
     public static void main(String[] args) throws IOException {
-        //launch(args);
         socket = new Socket("localhost",4999);
-
-
         launch(args);
     }
 
@@ -42,41 +40,24 @@ public class Client extends Application {
 
         //generate public and private keys for client
         RSA RSAEncrypter = new RSA();
-        KeyPair keyPair = RSAEncrypter.generateKeyPair(2048);
+        KeyPair keyPair = RSAEncrypter.generateKeyPair(512);
 
-//testy RSA
-//        String test = RSAEncrypter.encrypt("ANia",keyPair.getPublic());
-//        System.out.println(test);
-//        System.out.println(RSAEncrypter.decrypt(test, keyPair.getPrivate()));
-
-
-        //add public key to file
-        OutputStream outputStream = new FileOutputStream("C:\\Users\\Win10\\IdeaProjects\\AES\\publicKeys.txt", false);
-        PublicKey publicKey = keyPair.getPublic();
-        byte[] encodedPublicKey = publicKey.getEncoded();
+        byte[] encodedPublicKey = keyPair.getPublic().getEncoded();
         String b64PublicKey = Base64.getEncoder().encodeToString(encodedPublicKey);
-        System.out.println("Public key CLIENT: "+ b64PublicKey.trim());
-        //byte[] strToBytes = keyPair.getPublic().toString().getBytes();
-        outputStream.write(b64PublicKey.trim().getBytes());
-        outputStream.flush();
-        outputStream.close();
+        System.out.println(b64PublicKey);
+        File file = new File("C:\\Users\\Win10\\IdeaProjects\\AES\\publicKeys.txt");
+        FileOutputStream fop = new FileOutputStream(file);
+        fop.write( b64PublicKey.getBytes() );
+        fop.close();
+        ObjectOutputStream oos = null;
+        oos = new ObjectOutputStream(socket.getOutputStream());
+        oos.writeObject("key");
 
-        OutputStream outToServer = socket.getOutputStream();
-        outputStream.write(b64PublicKey.getBytes());
-        DataOutputStream out = new DataOutputStream(outToServer);
-        //add private key to file
-        //TO DO: CBC private key
-        PrivateKey privateKey = keyPair.getPrivate();
-        byte[] encodedPrivateKey = privateKey.getEncoded();
-        String b64PrivateKey = Base64.getEncoder().encodeToString(encodedPrivateKey);
-        outputStream = new FileOutputStream("C:\\Users\\Win10\\IdeaProjects\\AES\\privateKeys.txt", false);
+        this.encryptPrivateKey(keyPair.getPrivate());
 
-        outputStream.write(b64PrivateKey.getBytes());
-        outputStream.close();
-
-        //modeHash and mode from SERVER
-        final String modeHash = "ECB";
-        final String mode = "AES/ECB/PKCS5Padding";
+        //CFB
+        final String modeHash = "CFB";
+        final String mode = "AES/CFB/NoPadding";
 
         String finalModeHash = modeHash;
         openButton2.setOnAction(
@@ -168,5 +149,25 @@ public class Client extends Application {
         primaryStage.setScene(new Scene(rootGroup,300,275));
 
         primaryStage.show();
+    }
+
+    public void encryptPrivateKey(PrivateKey privateKey) throws Exception {
+        String keyString = getHashSHA_256("password");
+        //SecretKey key = new SecretKeySpec(keyString.getBytes(), 0, keyString.length(), "AES");
+        SecretKeySpec skeySpec = new SecretKeySpec("ania".getBytes(), "AES");
+        FileEncrypterDecrypter edCBC = new FileEncrypterDecrypter(skeySpec,"AES/CBC/NoPadding");
+        edCBC.encryptPrivateKeyCBC(privateKey,skeySpec);
+        edCBC.decryptPrivateKeyCBC();
+    }
+
+    public String getHashSHA_256(String password) throws Exception{
+        String hash = null;
+        byte[] passwordBytes = password.getBytes();
+
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        byte sha256[] = md.digest(passwordBytes);
+
+        hash = sha256.toString();
+        return  hash.toString();
     }
 }

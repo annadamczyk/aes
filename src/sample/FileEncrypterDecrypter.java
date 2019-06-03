@@ -58,6 +58,41 @@ public class FileEncrypterDecrypter {
         outputStream.flush();
     }
 
+    public void encryptPrivateKeyCBC(PrivateKey privateKey,SecretKeySpec skeySpec) throws IOException,Exception {
+        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        IvParameterSpec ivspec = new IvParameterSpec(iv);
+
+        //Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        cipher.init(Cipher.ENCRYPT_MODE, skeySpec, ivspec);
+
+
+        byte[] encodedPublicKey = privateKey.getEncoded();
+        String b64PublicKey = Base64.getEncoder().encodeToString(encodedPublicKey);
+        byte[] encrypted = cipher.doFinal(b64PublicKey.getBytes());
+        //System.out.println(b64PublicKey);
+        File file = new File("C:\\Users\\Win10\\IdeaProjects\\AES\\privateKeys.txt");
+        FileOutputStream fop = new FileOutputStream(file);
+        fop.write( b64PublicKey.getBytes() );
+        fop.close();
+    }
+
+    public void decryptPrivateKeyCBC() throws Exception{
+        byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+        IvParameterSpec ivspec = new IvParameterSpec(iv);
+        File file = new File("C:\\Users\\Win10\\IdeaProjects\\AES\\privateKeys.txt");
+        //Cipher cipher = Cipher.getInstance("AES/CBC/NoPadding");
+        cipher.init(Cipher.DECRYPT_MODE, this.secretKey, ivspec);
+
+        FileInputStream in = new FileInputStream(file);
+        byte[] input = new byte[(int) file.length()];
+        in.read(input);
+
+        FileOutputStream out = new FileOutputStream(file);
+        byte[] output = this.cipher.doFinal(input);
+        System.out.println("Private key CBC: "+output.toString());
+
+    }
+
     public  void saveFile(File f, Socket socket) throws Exception{
         InputStream input = socket.getInputStream();
         FileOutputStream fileOutputStream = new FileOutputStream(f);
@@ -79,27 +114,16 @@ public class FileEncrypterDecrypter {
             else if(mode.equals("CBC")) {
                 this.cipher.init(Cipher.ENCRYPT_MODE, this.secretKey, ivspec);
             }
+            else if(mode.equals("CFB")) {
+                this.cipher.init(Cipher.ENCRYPT_MODE, this.secretKey, ivspec);
+            }
         } catch (InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         }
         this.sendFile(f, socket);
-        //this.writeToFile(f);
     }
 
     public void decryptSessionKey(PrivateKey privateKey, RSA RSADecrypter) throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        /*InputStream is = new FileInputStream("C:\\Users\\Win10\\Desktop\\IT\\keySession");
-        BufferedReader buf = new BufferedReader(new InputStreamReader(is));
-        String line = buf.readLine();
-        StringBuilder sb = new StringBuilder();
-        while(line != null){
-            sb.append(line);
-            line = buf.readLine();
-        }*/
-        //String sb = new String(Files.readAllBytes(Paths.get("C:\\Users\\Win10\\Desktop\\IT\\keySession")));
-        //sb = sb.replaceAll("\\r\\n","");
-
-        //sb->encrypted session key
-
         InputStream is2 = new FileInputStream("C:\\Users\\Win10\\Desktop\\IT\\keySession");
         BufferedReader buf2 = new BufferedReader(new InputStreamReader(is2));
         String line2 = buf2.readLine();
@@ -109,31 +133,16 @@ public class FileEncrypterDecrypter {
             line2 = buf2.readLine();
         }
 
-        //String sb2 = new String(Files.readAllBytes(Paths.get("C:\\Users\\Win10\\IdeaProjects\\AES\\privateKeys.txt")));
-        //sb2.replaceAll("\\r\\n","");
-
-        /*KeyFactory kf = KeyFactory.getInstance("RSA");
-        PKCS8EncodedKeySpec specPriv = new PKCS8EncodedKeySpec(Base64.getDecoder().decode(sb2.trim()));
-        PrivateKey privKey = kf.generatePrivate(specPriv);*/
-
-
-        //String keySession = RSAdecryoter.decrypt(sb,privKey);
         String keySession = RSADecrypter.decrypt(sb2.toString(),privateKey);
-
         byte[] decodedSessionKey = Base64.getDecoder().decode(keySession.trim());
         System.out.println("Decoded session key: "+decodedSessionKey.toString());
         //byte[] decodedSessionKey = Base64.getDecoder().decode(sb.trim());
         this.secretKey = new SecretKeySpec(decodedSessionKey, 0,
                 decodedSessionKey.length, "AES");
-
-        /*byte[] decodedKey = Base64.getDecoder().decode(sb.toString());
-        SecretKey secretKey = new SecretKeySpec(decodedKey, 0,
-                decodedKey.length, "RSA");*/
     }
 
     public void decryptFile(File f, String mode)
             throws Exception {
-
         byte[] iv = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
         IvParameterSpec ivspec = new IvParameterSpec(iv);
         System.out.println("Decrypting file: " + f.getName());
@@ -144,10 +153,12 @@ public class FileEncrypterDecrypter {
             else if(mode.equals("CBC")) {
                 this.cipher.init(Cipher.DECRYPT_MODE, this.secretKey, ivspec);
             }
+            else if(mode.equals("CFB")){
+                this.cipher.init(Cipher.DECRYPT_MODE,this.secretKey, ivspec);
+            }
         } catch (InvalidAlgorithmParameterException e) {
             e.printStackTrace();
         }
-        //this.sendFile(f);
         this.writeToFile(f);
     }
 }
