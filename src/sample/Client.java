@@ -17,11 +17,11 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
 import java.net.Socket;
-import java.security.KeyPair;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
+import java.security.*;
+import java.util.Arrays;
 import java.util.Base64;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 public class Client extends Application {
     private static Socket socket;
@@ -31,7 +31,7 @@ public class Client extends Application {
     }
 
     @Override
-    public void start(Stage primaryStage) throws Exception {
+    public void start(Stage primaryStage) throws Exception  {
         primaryStage.setTitle("Client");
         final FileChooser fileChooser = new FileChooser();
         final Button openButton = new Button("decoding...");
@@ -45,6 +45,9 @@ public class Client extends Application {
         byte[] encodedPublicKey = keyPair.getPublic().getEncoded();
         String b64PublicKey = Base64.getEncoder().encodeToString(encodedPublicKey);
         System.out.println(b64PublicKey);
+        byte[] encodedPrivateKey1 = keyPair.getPrivate().getEncoded();
+        String b64PublicKey1 = Base64.getEncoder().encodeToString(encodedPrivateKey1);
+        System.out.println("private key rsa: "+b64PublicKey1);
         File file = new File("C:\\Users\\Win10\\IdeaProjects\\AES\\publicKeys.txt");
         FileOutputStream fop = new FileOutputStream(file);
         fop.write( b64PublicKey.getBytes() );
@@ -52,12 +55,13 @@ public class Client extends Application {
         ObjectOutputStream oos = null;
         oos = new ObjectOutputStream(socket.getOutputStream());
         oos.writeObject("key");
-
-        this.encryptPrivateKey(keyPair.getPrivate());
+        //save private key
+        this.encryptPrivateKey(keyPair.getPrivate(), "password");
+        this.decryptPrivateKey("password");
 
         //CFB
         final String modeHash = "CFB";
-        final String mode = "AES/CFB/NoPadding";
+        final String mode = "AES/CFB/PKCS5PADDING";
 
         String finalModeHash = modeHash;
         openButton2.setOnAction(
@@ -151,13 +155,48 @@ public class Client extends Application {
         primaryStage.show();
     }
 
-    public void encryptPrivateKey(PrivateKey privateKey) throws Exception {
-        String keyString = getHashSHA_256("password");
-        //SecretKey key = new SecretKeySpec(keyString.getBytes(), 0, keyString.length(), "AES");
-        SecretKeySpec skeySpec = new SecretKeySpec("ania".getBytes(), "AES");
-        FileEncrypterDecrypter edCBC = new FileEncrypterDecrypter(skeySpec,"AES/CBC/NoPadding");
-        edCBC.encryptPrivateKeyCBC(privateKey,skeySpec);
-        edCBC.decryptPrivateKeyCBC();
+    public void encryptPrivateKey(PrivateKey privateKey, String password) throws Exception {
+        String keyString = getHashSHA_256(password); //password of user
+
+        byte[] keyBytes = new byte[16];
+        try {
+            byte[] key = keyString.getBytes();
+            int len = key.length;
+
+            if (len > keyBytes.length) {
+                len = keyBytes.length;
+            }
+
+            System.arraycopy(key, 0, keyBytes, 0, len);
+        }catch (Exception ext){
+            System.out.println(ext.getMessage());
+        }
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes,"AES");
+        FileEncrypterDecrypter edCBC = new FileEncrypterDecrypter(key,"AES/CBC/NoPadding");
+        edCBC.encryptPrivateKeyCBC(privateKey,key,"new vector".getBytes());
+    }
+
+    public void decryptPrivateKey(String password) throws Exception {
+        String keyString = getHashSHA_256(password); //password of user
+
+        byte[] keyBytes = new byte[16];
+        try {
+            byte[] key = keyString.getBytes();
+            int len = key.length;
+
+            if (len > keyBytes.length) {
+                len = keyBytes.length;
+            }
+
+            System.arraycopy(key, 0, keyBytes, 0, len);
+        }catch (Exception ext){
+            System.out.println(ext.getMessage());
+        }
+
+        SecretKeySpec key = new SecretKeySpec(keyBytes,"AES");
+        FileEncrypterDecrypter edCBC = new FileEncrypterDecrypter(key,"AES/CBC/NoPadding");
+        edCBC.decryptPrivateKeyCBC("new vector".getBytes());
     }
 
     public String getHashSHA_256(String password) throws Exception{
@@ -166,8 +205,38 @@ public class Client extends Application {
 
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         byte sha256[] = md.digest(passwordBytes);
+        sha256 = Arrays.copyOf(sha256, 16);
+        String hashString = bytesToHex(sha256);
+        return  hashString;
+    }
 
-        hash = sha256.toString();
-        return  hash.toString();
+    private static String bytesToHex(byte[] hash) {
+        StringBuffer hexString = new StringBuffer();
+        for (int i = 0; i < hash.length; i++) {
+            String hex = Integer.toHexString(0xff & hash[i]);
+            if(hex.length() == 1) hexString.append('0');
+            hexString.append(hex);
+        }
+        return hexString.toString();
+    }
+
+    public static String sign(String plainText, PrivateKey privateKey) throws Exception {
+        Signature privateSignature = Signature.getInstance("SHA256withRSA");
+        privateSignature.initSign(privateKey);
+        privateSignature.update(plainText.getBytes(UTF_8));
+
+        byte[] signature = privateSignature.sign();
+
+        return Base64.getEncoder().encodeToString(signature);
+    }
+
+    public static boolean verify(String plainText, String signature, PublicKey publicKey) throws Exception {
+        Signature publicSignature = Signature.getInstance("SHA256withRSA");
+        publicSignature.initVerify(publicKey);
+        publicSignature.update(plainText.getBytes(UTF_8));
+
+        byte[] signatureBytes = Base64.getDecoder().decode(signature);
+
+        return publicSignature.verify(signatureBytes);
     }
 }
